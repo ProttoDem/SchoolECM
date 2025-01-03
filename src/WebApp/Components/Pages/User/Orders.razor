@@ -1,0 +1,53 @@
+﻿@page "/user/grades"
+@attribute [Authorize]
+@inject OrderingService OrderingService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Grades</PageTitle>
+<SectionContent SectionName="page-header-title">Grades</SectionContent>
+
+<div>
+    @if (!isTeacher)
+    {
+        @foreach (var discipline in disciplines!)
+        {
+            <div style="text-align: center; height:20px; background-color: #f4f4f4;">
+                <a href="/user/grades/@discipline!.Id.ToString()">
+                    <strong>@discipline!.DisciplineName.ToString()</strong>
+                </a>
+            </div>
+        }
+    }
+    else
+    {
+        @foreach (var discipline in disciplines!)
+        {
+            <div style="text-align: center; height:20px; background-color: #f4f4f4;">
+                <a href="/user/grades/discipline/@discipline!.Id.ToString()">
+                    <strong>@discipline!.DisciplineName.ToString()</strong>
+                </a>
+            </div>
+        }
+    }
+
+</div>
+
+@code {
+    private List<Discipline>? disciplines = new List<Discipline>();
+
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    private bool isTeacher = false;
+
+    string? ReadClaim(string type)
+        => HttpContext.User.Claims.FirstOrDefault(x => x.Type == type)?.Value;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Boolean.TryParse(ReadClaim("isTeacher"), out isTeacher);
+
+        disciplines = await OrderingService.GetAllDisciplines();
+
+    }
+}

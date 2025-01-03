@@ -1,0 +1,55 @@
+﻿@page "/user/grades/{disciplineId:int}"
+@attribute [Authorize]
+@inject OrderingService OrderingService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Grades</PageTitle>
+<SectionContent SectionName="page-header-title">Grades</SectionContent>
+
+@if (gradesByStudentAndDiscipline != null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                @foreach (var date in sortedGrades.Keys)
+                {
+                    <th>@date.ToString("yyyy-MM-dd")</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Grade</td>
+                @foreach (var grade in sortedGrades.Values)
+                {
+                    <td>@(grade.HasValue ? grade == -1 ? "Н" : grade.ToString() : "")</td>
+                }
+            </tr>
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Loading grades...</p>
+}
+
+@code {
+    [Parameter]
+    public int disciplineId { get; set; }
+    private GradesByStudentAndDiscipline? gradesByStudentAndDiscipline;
+    private Dictionary<DateTime, int?> sortedGrades = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        gradesByStudentAndDiscipline = await OrderingService.GetGradesByStudentAndDiscipline(disciplineId);
+
+        if (gradesByStudentAndDiscipline?.GradesByDateTime != null)
+        {
+            // Sort the dictionary by keys (dates)
+            sortedGrades = gradesByStudentAndDiscipline.GradesByDateTime
+                .OrderBy(entry => entry.Key)
+                .ToDictionary(entry => entry.Key, entry => entry.Value);
+        }
+    }
+}

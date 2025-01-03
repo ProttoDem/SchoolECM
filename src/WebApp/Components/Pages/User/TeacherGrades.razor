@@ -1,0 +1,19 @@
+﻿@page "/user/teacher/{disciplineId:int}/{groupId:int}"
+@attribute [Authorize]
+@inject OrderingService OrderingService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Grades</PageTitle>
+<SectionContent SectionName="page-header-title">Grades</SectionContent>
+
+@code {
+    [Parameter]
+    public int disciplineId { get; set; }
+    [Parameter]
+    public int groupId { get; set; }
+
+    //protected override async Task OnInitializedAsync()
+    //{
+        
+    //}
+}

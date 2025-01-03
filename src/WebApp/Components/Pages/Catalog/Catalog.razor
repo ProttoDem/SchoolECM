@@ -1,0 +1,174 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Authentication.Cookies;
+@using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authentication
+@inject NavigationManager Nav
+@inject CatalogService ScheduleService
+@inject OrderingService OrderingService
+@attribute [StreamRendering]
+
+<PageTitle>Schedule</PageTitle>
+
+    @if (!IsLoggedIn)
+    {
+    <div style="text-align:center;">
+        <h2>Please, log in</h2>
+    </div>
+    }
+    else
+    {
+    <div style="text-align:center;"><h1>@curMonthName</h1></div>
+    <div class="calendar-container">
+            <table style="width: 75%;">
+                <thead>
+                    <tr>
+                        <th>Sun</th>
+                        <th>Mon</th>
+                        <th>Tue</th>
+                        <th>Wed</th>
+                        <th>Thu</th>
+                        <th>Fri</th>
+                        <th>Sat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @code {
+                        int dayCounter = 1;
+                    }
+                    @for (int row = 0; row < 6; row++) // Maximum 6 rows in a calendar
+                    {
+                        <tr>
+                        @for (int col = 0; col < 7; col++) // 7 days in a week
+                        {
+                            @if (row == 0 && col < currentDayOfWeek || dayCounter > daysInMonth)
+                            {
+                                // Render empty cells for days outside the current month
+                                <td></td>
+                            }
+                            else
+                        {
+                                    var date = new DateOnly(DateTime.Now.Year, DateTime.Now.Month, dayCounter);
+                            <td>
+                                <div class="date">@dayCounter</div>
+                                <div class="lessons">
+                                <table class="lesson-table">
+                                    @if (GroupedSchedules!.TryGetValue(date, out var schedules))
+                                    {
+                                        @for (var i = 0; i < 5; i++)
+                                        {
+                                            if (i < schedules.Count)
+                                            {
+                                                var schedule = schedules[i];
+                                                <tr>
+                                                    <td>
+                                                                <a href="/scheduleDetails/@schedule!.Id.ToString()">
+                                                        <strong>@schedule!.Time.ToString("HH:mm")</strong><br />
+                                                        @schedule.DisciplineName<br />
+                                                        @schedule.TeacherName
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            }
+                                            else
+                                            {
+                                                // Render empty row for remaining slots
+                                                <tr>
+                                                    <td></td>
+                                                </tr>
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Render empty rows for days with no schedules
+                                        for (var i = 0; i < 5; i++)
+                                        {
+                                            <tr>
+                                                <td></td>
+                                            </tr>
+                                        }
+                                    }
+                                </table>
+                                    </div>
+                            </td>
+                            dayCounter++;
+                        }
+                }
+            </tr>
+        }
+                </tbody>
+            </table>
+        </div>
+    }
+
+@code {
+    const int PageSize = 9;
+
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? Page { get; set; }
+
+    [SupplyParameterFromQuery(Name = "brand")]
+    public int? BrandId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public int? ItemTypeId { get; set; }
+
+    CatalogResult? catalogResult;
+
+    List<ScheduleSummary?>? ScheduleData;
+    public Dictionary<DateOnly, List<ScheduleSummary?>>? GroupedSchedules { get; set; }
+
+    private bool IsLoggedIn;
+
+    private int currentDayOfWeek;
+    private DateTime firstDayOfMonth;
+    private int daysInMonth;
+    private int curMonth = DateTime.Now.Month;
+    private string curMonthName = "";
+
+    static IEnumerable<int> GetVisiblePageIndexes(CatalogResult result)
+        => Enumerable.Range(1, (int)Math.Ceiling(1.0 * result.Count / PageSize));
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoggedIn = HttpContext?.User.Identity?.IsAuthenticated == true;
+        if (IsLoggedIn)
+        {
+            switch (curMonth)
+            {
+                case 1:
+                    curMonthName = "December";
+                    break;
+            }
+            ScheduleData = await OrderingService.GetSchedule();
+        }
+
+        catalogResult = await ScheduleService.GetCatalogItems(
+            Page.GetValueOrDefault(1) - 1,
+            PageSize,
+            BrandId,
+            ItemTypeId);
+
+        firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+        currentDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+        daysInMonth = DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month);
+
+        if (ScheduleData is not null)
+        {
+            GroupSchedulesByDate();
+        }        
+    }
+
+    private void GroupSchedulesByDate()
+    {
+        // Group summaries by date for efficient lookups
+        GroupedSchedules = ScheduleData!
+            .Where(s => s != null)
+            .GroupBy(s => s!.Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+}

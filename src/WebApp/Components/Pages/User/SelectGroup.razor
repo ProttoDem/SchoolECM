@@ -1,0 +1,34 @@
+﻿@page "/user/grades/discipline/{disciplineId:int}"
+@attribute [Authorize]
+@inject OrderingService OrderingService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Grades</PageTitle>
+<SectionContent SectionName="page-header-title">Grades</SectionContent>
+
+<div>
+    @if(groups is not null)
+    {
+        @foreach (var group in groups)
+        {
+            <div>
+                <a href="/user/teacher/@disciplineId/@group.Id">
+                    <strong>@group!.GroupName.ToString()</strong>
+                </a>
+            </div>
+        }
+    }
+    
+</div>
+
+@code {
+    [Parameter]
+    public int disciplineId { get; set; }
+    private List<Group>? groups;
+    private Dictionary<DateTime, int?> sortedGrades = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        groups = await OrderingService.GetGroups(disciplineId);
+    }
+}

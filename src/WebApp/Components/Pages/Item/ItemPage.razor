@@ -1,0 +1,56 @@
+﻿@page "/scheduleDetails/{ScheduleDetailsId:int}"
+@using System.Net
+@inject CatalogService CatalogService
+@inject OrderingService OrderingService
+@inject NavigationManager Nav
+@inject IProductImageUrlProvider ProductImages
+
+@if (scheduleDetails is not null)
+{
+    <PageTitle>@scheduleDetails.DisciplineName</PageTitle>
+    <SectionContent SectionName="page-header-title">@scheduleDetails.DisciplineName</SectionContent>
+
+    <div class="item-details">
+        <img alt="@scheduleDetails.DisciplineName" src="@ProductImages.GetProductImageUrl(scheduleDetails.DisciplineId)" />
+        <div class="description">
+            <h3>@scheduleDetails.DisciplineName</h3>
+            <h4>@scheduleDetails.DisciplineDescription</h4>
+            <h4>Teacher : @scheduleDetails.TeacherName</h4>
+            <p>Room number : @scheduleDetails.RoomNumber</p>
+            <p>Date : @scheduleDetails.Date, @scheduleDetails.Time</p>
+        </div>
+    </div>    
+}
+else if (notFound)
+{
+    <SectionContent SectionName="page-header-title">Not found</SectionContent>
+    <div class="item-details">
+        <p>Sorry, we couldn't find any such class.</p>
+    </div>
+}
+
+@code {
+    private ScheduleDetails? scheduleDetails;
+    private bool isLoggedIn;
+    private bool notFound;
+
+    [Parameter]
+    public int ScheduleDetailsId { get; set; }
+
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoggedIn = HttpContext?.User.Identity?.IsAuthenticated == true;
+            scheduleDetails = await OrderingService.GetScheduleDetails(ScheduleDetailsId);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            HttpContext!.Response.StatusCode = 404;
+            notFound = true;
+        }
+    }
+}
